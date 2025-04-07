@@ -39,7 +39,13 @@ class MyAccessBDD extends AccessBDD {
             case "revue" :
                 return $this->selectAllRevues();
             case "exemplaire" :
-                return $this->selectExemplairesRevue($champs);
+                if (empty($champs)) {
+                    // S'il n'y a pas de champs → on veut TOUS les exemplaires
+                    return $this->selectAllExemplaires();
+                } else {
+                    // Sinon on utilise l'ancien pour un exemplaire spécifique
+                    return $this->selectExemplairesRevue($champs);
+                }
             case "genre" :
             case "public" :
             case "rayon" :
@@ -79,15 +85,15 @@ class MyAccessBDD extends AccessBDD {
      * @return int|null nombre de tuples modifiés ou null si erreur
      * @override
      */	
-    protected function traitementUpdate(string $table, ?string $id, ?array $champs) : ?int{
+    protected function traitementUpdate(string $table, ?string $id, ?array $champs) : ?int {
         switch($table){
-            case "" :
-                // return $this->uneFonction(parametres);
+            case "exemplaire":
+                return $this->updateExemplaire($id, $champs);
             default:                    
-                // cas général
                 return $this->updateOneTupleOneTable($table, $id, $champs);
         }	
-    }  
+    }
+     
     
     /**
      * demande de suppression (delete)
@@ -277,4 +283,43 @@ class MyAccessBDD extends AccessBDD {
         return $this->conn->queryBDD($requete, $champNecessaire);
     }		    
     
+    /**
+     * récupère toutes les lignes de la table Exemplaire
+     * @return array|null
+     */
+    private function selectAllExemplaires() : ?array {
+        $requete = "SELECT id, numero, dateAchat, photo, idEtat FROM exemplaire ORDER BY dateAchat DESC;";
+        return $this->conn->queryBDD($requete);
+    }
+
+    private function updateExemplaire(?string $id, ?array $champs) : ?int {
+        if (empty($champs) || is_null($id)) {
+            return null;
+        }
+        if (!array_key_exists('numero', $champs)) {
+            return null; // il faut numéro pour savoir quel exemplaire modifier
+        }
+    
+        $numero = $champs['numero'];
+        unset($champs['numero']); // on retire numero du tableau des champs à modifier
+    
+        if (empty($champs)) {
+            return null; // il faut au moins un champ à modifier
+        }
+    
+        // construction de la requête
+        $requete = "UPDATE exemplaire SET ";
+        foreach ($champs as $key => $value) {
+            $requete .= "$key=:$key,";
+        }
+        $requete = substr($requete, 0, strlen($requete) - 1); // enlève dernière virgule
+        $requete .= " WHERE id=:id AND numero=:numero;";
+    
+        $champs['id'] = $id;
+        $champs['numero'] = $numero;
+    
+        return $this->conn->updateBDD($requete, $champs);
+    }
+    
+
 }
