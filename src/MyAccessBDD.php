@@ -321,5 +321,32 @@ class MyAccessBDD extends AccessBDD {
         return $this->conn->updateBDD($requete, $champs);
     }
     
+    /**
+     * Traite une demande d'authentification
+     * @param array|null $champs login et mot de passe
+     * @return array|null informations de l'utilisateur ou null si mauvais login/mdp
+     */
+    protected function traitementAuthentification(?array $champs) : ?array {
+        if (empty($champs) || !isset($champs['login']) || !isset($champs['password'])) {
+            return null;
+        }
+        $login = $champs['login'];
+        $password = $champs['password'];
+        
+        $requete = "SELECT u.id, u.nom, u.prenom, s.libelle AS service
+                    FROM utilisateur u
+                    JOIN service s ON u.idservice = s.id
+                    WHERE u.login = :login AND u.pwd = :password;";
+
+        $parametres = ['login' => $login, 'password' => $password];
+        $result = $this->conn->queryBDD($requete, $parametres);
+
+        if ($result) {
+            return $result[0]; // Retourne la première (et unique) ligne trouvée
+        } else {
+            return null; // Aucun utilisateur trouvé
+        }
+    }
+
 
 }
